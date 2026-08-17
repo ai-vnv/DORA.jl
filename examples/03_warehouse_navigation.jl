@@ -3,12 +3,12 @@
 # Run from the repository root with
 #     julia --project=examples examples/03_warehouse_navigation.jl
 #
-# DORA.jl ships the warehouse SSP used as the paper's primary benchmark: a
+# DORASolvers.jl ships the warehouse SSP used as the paper's primary benchmark: a
 # shelf grid with unknown terrain costs, lateral actuation slip, and a hazard
 # band of dynamic obstacles. It exposes the POMDPs.jl MDP interface, and the
 # low-level learner API gives episode-by-episode control.
 
-using DORA
+using DORASolvers
 using POMDPs
 
 # 20x20 warehouse; the SplitMix64 terrain seed reproduces the paper maps.

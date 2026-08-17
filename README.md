@@ -1,8 +1,8 @@
-# DORA.jl
+# DORASolvers.jl
 
-[![CI](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/ai-vnv/DORA.jl/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORA.jl)
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORA.jl/dev/)
+[![CI](https://github.com/ai-vnv/DORASolvers.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ai-vnv/DORASolvers.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/ai-vnv/DORASolvers.jl/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORASolvers.jl)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORASolvers.jl/dev/)
 
 DORA (Dijkstra Oracle Reduced-cost Algorithm) is an online solver for
 stochastic shortest path problems specified using the
@@ -27,14 +27,14 @@ decision time inside `action`.
 
 ```julia
 import Pkg
-Pkg.add(url="https://github.com/ai-vnv/DORA.jl")
+Pkg.add(url="https://github.com/ai-vnv/DORASolvers.jl")
 ```
 
 ## Usage
 
 ```julia
 using POMDPs
-using DORA
+using DORASolvers
 using POMDPModels
 using POMDPTools
 

@@ -8,7 +8,7 @@
 # bound per state-action pair, with a fixed number of Dijkstra oracle calls
 # per episode and no estimated transition kernel.
 
-using DORA
+using DORASolvers
 using POMDPs
 using POMDPModels
 
@@ -22,14 +22,14 @@ mdp = SimpleGridWorld(size=(10, 10), rewards=rewards, tprob=0.7)
 planner = solve(DORASolver(start=GWPos(1, 1), known_costs=false,
                            train_episodes=300, cost_noise=0.2, seed=1), mdp)
 
-V, _ = DORA.TabularSSPs.optimal_value(planner.tab)
+V, _ = DORASolvers.TabularSSPs.optimal_value(planner.tab)
 Jstar = V[planner.tab.start]
-J = DORA.TabularSSPs.eval_policy(planner.tab, replan!(planner))[planner.tab.start]
+J = DORASolvers.TabularSSPs.eval_policy(planner.tab, replan!(planner))[planner.tab.start]
 println("after 300 episodes: gap ", round(100 * (J - Jstar) / Jstar, digits=2), "%")
 
 # training can continue at any time
 train!(planner, 100)
-J = DORA.TabularSSPs.eval_policy(planner.tab, replan!(planner))[planner.tab.start]
+J = DORASolvers.TabularSSPs.eval_policy(planner.tab, replan!(planner))[planner.tab.start]
 println("after 400 episodes: gap ", round(100 * (J - Jstar) / Jstar, digits=2), "%")
 
 # Mode 2: deployment-time cost learning ----------------------------------

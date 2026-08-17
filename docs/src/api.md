@@ -22,23 +22,23 @@ tabularize
 ## Learners and the episode-level API
 
 ```@autodocs
-Modules = [DORA.Learners]
+Modules = [DORASolvers.Learners]
 ```
 
 ## Warehouse benchmark domain
 
 ```@autodocs
-Modules = [DORA.NavSSPs]
+Modules = [DORASolvers.NavSSPs]
 ```
 
 ## Dijkstra oracle
 
 ```@autodocs
-Modules = [DORA.Dijkstra]
+Modules = [DORASolvers.Dijkstra]
 ```
 
 ## Reproducible RNG
 
 ```@autodocs
-Modules = [DORA.RNGs]
+Modules = [DORASolvers.RNGs]
 ```

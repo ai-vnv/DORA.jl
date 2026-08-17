@@ -1,5 +1,5 @@
 using Test
-using DORA
+using DORASolvers
 using POMDPs
 using POMDPModels
 using POMDPTools
@@ -22,7 +22,7 @@ end
 POMDPs.reward(::ChainMDP, s::Int, a::Int, sp::Int) =
     sp == 5 ? 10.0 : sp == 4 ? -10.0 : -1.0
 
-@testset "DORA.jl" begin
+@testset "DORASolvers.jl" begin
 
 @testset "SplitMix64 reproducibility" begin
     # Hardcoded values cross-validated against ref/rng.py (seed 1234).
@@ -30,8 +30,8 @@ POMDPs.reward(::ChainMDP, s::Int, a::Int, sp::Int) =
     @test [rand01(r) for _ in 1:4] ≈ [0.730666524540624, 0.5928898580149862,
                                       0.20213287431010984, 0.3061867920503709]
     r = SplitMix64(1234)
-    @test DORA.RNGs.nextu64(r) == 0xbb0cf61b2f181cdb
-    @test DORA.RNGs.nextu64(r) == 0x97c7a1364df06524
+    @test DORASolvers.RNGs.nextu64(r) == 0xbb0cf61b2f181cdb
+    @test DORASolvers.RNGs.nextu64(r) == 0x97c7a1364df06524
     r = SplitMix64(7)
     @test all(0 .<= [randint(r, 5) for _ in 1:20] .<= 4)
     @test categorical(SplitMix64(3), [0.0, 0.0, 1.0]) == 3
@@ -85,7 +85,7 @@ mdp = SimpleGridWorld(size=(10, 10), rewards=rewards, tprob=0.7)
     @test m.out_s[m.goal, 1, 1] == m.goal
     @test m.out_s[m.crash, 1, 1] == m.crash
     # optimal value of the start is finite and below the timeout penalty
-    V, pistar = DORA.TabularSSPs.optimal_value(m)
+    V, pistar = DORASolvers.TabularSSPs.optimal_value(m)
     @test 0.0 < V[m.start] < m.c_to
 end
 
@@ -98,9 +98,9 @@ end
     @test oracle_calls(p.learner) == sol.iters
 
     # the planner policy is near optimal on the tabularized model
-    V, _ = DORA.TabularSSPs.optimal_value(p.tab)
+    V, _ = DORASolvers.TabularSSPs.optimal_value(p.tab)
     Jstar = V[p.tab.start]
-    Jp = DORA.TabularSSPs.eval_policy(p.tab, p.pi)[p.tab.start]
+    Jp = DORASolvers.TabularSSPs.eval_policy(p.tab, p.pi)[p.tab.start]
     @test (Jp - Jstar) / Jstar < 0.01
 
     # value follows the POMDPs.jl maximization convention
@@ -119,9 +119,9 @@ end
                      seed=1)
     p = solve(sol, mdp)
     @test oracle_calls(p.learner) == sol.train_episodes * sol.iters
-    V, _ = DORA.TabularSSPs.optimal_value(p.tab)
+    V, _ = DORASolvers.TabularSSPs.optimal_value(p.tab)
     Jstar = V[p.tab.start]
-    Jp = DORA.TabularSSPs.eval_policy(p.tab, replan!(p))[p.tab.start]
+    Jp = DORASolvers.TabularSSPs.eval_policy(p.tab, replan!(p))[p.tab.start]
     @test (Jp - Jstar) / Jstar < 0.05
 
     # train! continues learning on the same planner
@@ -241,9 +241,9 @@ end
 
     # SARSA temporal difference branches, driven directly
     Ls = Sarsa(m, K)
-    DORA.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.goal)
-    DORA.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.crash)
-    DORA.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.start)
+    DORASolvers.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.goal)
+    DORASolvers.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.crash)
+    DORASolvers.Learners.sarsa_step!(Ls, m.start, 1, 1.0, m.start)
     @test Ls.Q[m.start, 1] > 0.0
 end
 
@@ -255,19 +255,19 @@ end
     m = tabularize(mdp; start=GWPos(1, 1), classify=classify,
                    cost=(s, a, sp) -> 1.0, c_min=0.5, c_to=30.0,
                    c_crash=20.0, horizon=100, cost_noise=0.2)
-    V, pistar = DORA.TabularSSPs.optimal_value(m)
-    @test DORA.TabularSSPs.eval_policy(m, pistar)[m.start] ≈ V[m.start] atol = 1e-6
-    sr, cr, tr = DORA.TabularSSPs.outcome_rates(m, pistar)
+    V, pistar = DORASolvers.TabularSSPs.optimal_value(m)
+    @test DORASolvers.TabularSSPs.eval_policy(m, pistar)[m.start] ≈ V[m.start] atol = 1e-6
+    sr, cr, tr = DORASolvers.TabularSSPs.outcome_rates(m, pistar)
     @test sr + cr + tr ≈ 1.0 atol = 1e-9
-    marg, causf = DORA.TabularSSPs.causality_margin(m, V, pistar)
+    marg, causf = DORASolvers.TabularSSPs.causality_margin(m, V, pistar)
     @test isfinite(marg) && 0.0 <= causf <= 1.0
     # the clamped reduced-cost member of the Dijkstra class is near optimal
-    ws = DORA.TabularSSPs.reduced_costs(m, V)
+    ws = DORASolvers.TabularSSPs.reduced_costs(m, V)
     fin = isfinite.(ws)
     @test count(fin) > 0
     wr = [fin[s, a] ? max(ws[s, a], 0.0) : 1e6 for s in 1:m.NS, a in 1:m.NA]
     piR, _ = dijkstra_policy(ReverseAdj(m.succ), wr, m.goal, m.avail, m.NS, m.NA)
-    JR = DORA.TabularSSPs.eval_policy(m, piR)[m.start]
+    JR = DORASolvers.TabularSSPs.eval_policy(m, piR)[m.start]
     @test (JR - V[m.start]) / V[m.start] < 0.01
 
     # a two-step horizon forces the timeout return of the tabular episode
@@ -286,7 +286,7 @@ end
     deadend = findfirst(==(2), tabc.states)
     @test all(.!tabc.avail[deadend, :])
     Lc = Sarsa(tabc, 2)
-    DORA.Learners.sarsa_step!(Lc, tabc.start, 1, 1.0, deadend)
+    DORASolvers.Learners.sarsa_step!(Lc, tabc.start, 1, 1.0, deadend)
     @test Lc.Q[tabc.start, 1] > 0.0
 end
 
@@ -311,15 +311,15 @@ end
     # cannot fold the calls away
     R2 = RiskDORA(m, 2)
     M2 = MCTSPlan(m, 2; sims=2, depth=2)
-    @test Base.invokelatest(DORA.Learners.vi_sweeps, R2) == 0
-    @test Base.invokelatest(DORA.Learners.explore, R2) == 0.0
-    @test Base.invokelatest(DORA.Learners.explore, M2) == 0.0
+    @test Base.invokelatest(DORASolvers.Learners.vi_sweeps, R2) == 0
+    @test Base.invokelatest(DORASolvers.Learners.explore, R2) == 0.0
+    @test Base.invokelatest(DORASolvers.Learners.explore, M2) == 0.0
 end
 
 @testset "solver on a reward-arity-4 MDP" begin
     # terminal states classified directly (unreachable through the BFS, since
     # the entering reward cells collapse first)
-    cls = DORA._default_classify(ChainMDP(), [1, 2])
+    cls = DORASolvers._default_classify(ChainMDP(), [1, 2])
     @test cls(4) == :crash
     @test cls(5) == :goal
 

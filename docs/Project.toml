@@ -1,5 +1,5 @@
 [deps]
-DORA = "71210631-d7b7-4b3c-b2ad-dc7b71d6cc21"
+DORASolvers = "71210631-d7b7-4b3c-b2ad-dc7b71d6cc21"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [compat]

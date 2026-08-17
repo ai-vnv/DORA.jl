@@ -1,12 +1,12 @@
 using Documenter
-using DORA
+using DORASolvers
 
 makedocs(
-    sitename = "DORA.jl",
-    modules = [DORA],
+    sitename = "DORASolvers.jl",
+    modules = [DORASolvers],
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://ai-vnv.github.io/DORA.jl/stable/",
+        canonical = "https://ai-vnv.github.io/DORASolvers.jl/stable/",
     ),
     pages = [
         "Home" => "index.md",
@@ -19,7 +19,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/ai-vnv/DORA.jl",
+    repo = "github.com/ai-vnv/DORASolvers.jl",
     devbranch = "main",
     push_preview = false,
 )

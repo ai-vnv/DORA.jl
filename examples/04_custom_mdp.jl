@@ -8,7 +8,7 @@
 # pass `classify`, `cost`, `start`, and (for state types that do not hash by
 # value) `key` explicitly.
 
-using DORA
+using DORASolvers
 using POMDPs
 using POMDPTools
 
@@ -46,7 +46,7 @@ for s in 1:5
 end
 
 # The tabularized SSP is available for exact analysis.
-V, pistar = DORA.TabularSSPs.optimal_value(planner.tab)
-sr, cr, _ = DORA.TabularSSPs.outcome_rates(planner.tab, pistar)
+V, pistar = DORASolvers.TabularSSPs.optimal_value(planner.tab)
+sr, cr, _ = DORASolvers.TabularSSPs.outcome_rates(planner.tab, pistar)
 println("optimal expected cost: ", round(V[planner.tab.start], digits=2),
         "  success rate: ", round(sr, digits=3))

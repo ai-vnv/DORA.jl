@@ -1,17 +1,17 @@
 """
-DORA.jl. Dijkstra Oracle Reduced-cost Algorithm for online stochastic shortest
+DORASolvers.jl. Dijkstra Oracle Reduced-cost Algorithm for online stochastic shortest
 path navigation, packaged as a solver for models formulated with POMDPs.jl.
 
 Quick start:
 
-    using DORA, POMDPs, POMDPModels
+    using DORASolvers, POMDPs, POMDPModels
     planner = solve(DORASolver(), SimpleGridWorld())
     a = action(planner, GWPos(1, 1))
 
 See the `examples/` directory for worked examples and the online
-documentation at https://ai-vnv.github.io/DORA.jl/dev/.
+documentation at https://ai-vnv.github.io/DORASolvers.jl/dev/.
 """
-module DORA
+module DORASolvers
 
 include("RNG.jl")
 include("Dijkstra.jl")

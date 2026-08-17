@@ -1,4 +1,4 @@
-# Quickstart: solve a POMDPs.jl gridworld with DORA.
+# Quickstart: solve a POMDPs.jl gridworld with DORASolvers.
 #
 # Run from the repository root with
 #     julia --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
@@ -8,7 +8,7 @@
 # into a stochastic shortest path problem and returns a planner; the Dijkstra
 # oracle calls run lazily at decision time inside `action`.
 
-using DORA
+using DORASolvers
 using POMDPs
 using POMDPModels
 using POMDPTools
@@ -35,8 +35,8 @@ r = simulate(RolloutSimulator(rng=MersenneTwister(1), max_steps=100), mdp, plann
 println("rollout reward: ", r)
 
 # The planner's policy is near optimal on the tabularized model.
-V, _ = DORA.TabularSSPs.optimal_value(planner.tab)
+V, _ = DORASolvers.TabularSSPs.optimal_value(planner.tab)
 Jstar = V[planner.tab.start]
-J = DORA.TabularSSPs.eval_policy(planner.tab, planner.pi)[planner.tab.start]
+J = DORASolvers.TabularSSPs.eval_policy(planner.tab, planner.pi)[planner.tab.start]
 println("optimal cost $Jstar, planner cost $J  (gap ",
         round(100 * (J - Jstar) / Jstar, digits=3), "%)")

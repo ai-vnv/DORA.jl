@@ -1,4 +1,4 @@
-# DORA.jl
+# DORASolvers.jl
 
 DORA (Dijkstra Oracle Reduced-cost Algorithm) is an online solver for
 stochastic shortest path (SSP) problems specified using the
@@ -30,14 +30,14 @@ Dijkstra oracle calls run lazily at decision time inside `action`.
 
 ```julia
 import Pkg
-Pkg.add(url="https://github.com/ai-vnv/DORA.jl")
+Pkg.add(url="https://github.com/ai-vnv/DORASolvers.jl")
 ```
 
 ## Quick start
 
 ```julia
 using POMDPs
-using DORA
+using DORASolvers
 using POMDPModels
 using POMDPTools
 
