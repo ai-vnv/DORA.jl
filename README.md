@@ -2,8 +2,7 @@
 
 [![CI](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/ai-vnv/DORA.jl/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORA.jl)
-[![Docs (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://ai-vnv.github.io/DORA.jl/stable/)
-[![Docs (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORA.jl/dev/)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORA.jl/dev/)
 
 DORA (Dijkstra Oracle Reduced-cost Algorithm) is an online solver for
 stochastic shortest path problems specified using the

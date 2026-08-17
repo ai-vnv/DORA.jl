@@ -9,7 +9,7 @@ Quick start:
     a = action(planner, GWPos(1, 1))
 
 See the `examples/` directory for worked examples and the online
-documentation at https://ai-vnv.github.io/DORA.jl/stable/.
+documentation at https://ai-vnv.github.io/DORA.jl/dev/.
 """
 module DORA
 
