@@ -8,9 +8,8 @@ Quick start:
     planner = solve(DORASolver(), SimpleGridWorld())
     a = action(planner, GWPos(1, 1))
 
-See the `examples/` directory for worked examples, and the research
-repository (mansurarief/dora-dijkstra-mdp) for the paper and the scripts
-that reproduce its experiments.
+See the `examples/` directory for worked examples and the online
+documentation at https://ai-vnv.github.io/DORA.jl/stable/.
 """
 module DORA
 

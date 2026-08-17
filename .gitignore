@@ -4,3 +4,5 @@ Manifest.toml
 *.cov
 .DS_Store
 examples/Manifest.toml
+docs/Manifest.toml
+docs/build/

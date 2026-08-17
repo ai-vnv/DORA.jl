@@ -1,7 +1,9 @@
 # DORA.jl
 
-[![CI](https://github.com/mansurarief/DORA.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/mansurarief/DORA.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/mansurarief/DORA.jl/graph/badge.svg)](https://codecov.io/gh/mansurarief/DORA.jl)
+[![CI](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ai-vnv/DORA.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/ai-vnv/DORA.jl/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORA.jl)
+[![Docs (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://ai-vnv.github.io/DORA.jl/stable/)
+[![Docs (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORA.jl/dev/)
 
 DORA (Dijkstra Oracle Reduced-cost Algorithm) is an online solver for
 stochastic shortest path problems specified using the
@@ -16,10 +18,9 @@ the intended successor, then Dijkstra run with them as edge weights returns
 exactly the optimal value function and policy. DORA estimates these weights
 online, using one confidence bound per state-action pair and a fixed number
 of Dijkstra oracle calls per episode, and never estimates a transition
-kernel. See the [research repository](https://github.com/mansurarief/dora-dijkstra-mdp)
-for the paper, the proofs, and the scripts that reproduce its experiments.
+kernel.
 
-Like MCTS.jl, DORA is an online solver: `solve` converts the MDP into a
+DORA is an online solver: `solve` converts the MDP into a
 tabular SSP and returns a planner; the Dijkstra oracle calls run lazily at
 decision time inside `action`.
 
@@ -27,7 +28,7 @@ decision time inside `action`.
 
 ```julia
 import Pkg
-Pkg.add(url="https://github.com/mansurarief/DORA.jl")
+Pkg.add(url="https://github.com/ai-vnv/DORA.jl")
 ```
 
 ## Usage
@@ -123,5 +124,4 @@ Beyond the solver, the package exports the building blocks used by the paper:
 ## Citation
 
 If you use this package, please cite *Dijkstra as an Oracle for Online
-Stochastic Shortest Path Navigation with Provable Guarantees* (see the
-[research repository](https://github.com/mansurarief/dora-dijkstra-mdp)).
+Stochastic Shortest Path Navigation with Provable Guarantees* paper (TBD).
