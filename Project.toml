@@ -1,0 +1,21 @@
+name = "DORA"
+uuid = "71210631-d7b7-4b3c-b2ad-dc7b71d6cc21"
+authors = ["Mansur M. Arief <mansurarief91@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
+POMDPs = "a93abf59-7444-517b-a68a-c42f96afdd7d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+POMDPTools = "0.1, 0.2, 0.3, 1"
+POMDPs = "0.9, 1"
+julia = "1.9"
+
+[extras]
+POMDPModels = "355abbd5-f08e-5560-ac9e-8b5f2592a0ca"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "POMDPModels"]
