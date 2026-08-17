@@ -15,7 +15,13 @@ julia --project=examples examples/01_gridworld_quickstart.jl
 solves a `SimpleGridWorld` from POMDPModels.jl with the solver defaults,
 queries `action` and `value`, runs the planner under
 `POMDPTools.RolloutSimulator`, and compares the planner's policy cost to the
-optimal cost of the tabularized model (the gap is below 0.01%).
+optimal cost of the tabularized model.
+
+The gap reported there is the relative excess cost
+``(J_\pi - J^*) / J^*`` at the start state, with both terms computed exactly
+by dynamic programming on the tabularized model. The test suite asserts that
+this gap stays **below 1%** (`test/runtests.jl`); the example prints the value
+actually attained, which on this instance is smaller than the asserted bound.
 
 ## 2. Online cost learning
 

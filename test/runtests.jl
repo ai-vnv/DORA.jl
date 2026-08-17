@@ -85,7 +85,7 @@ mdp = SimpleGridWorld(size=(10, 10), rewards=rewards, tprob=0.7)
     @test m.out_s[m.goal, 1, 1] == m.goal
     @test m.out_s[m.crash, 1, 1] == m.crash
     # optimal value of the start is finite and below the timeout penalty
-    V, pistar = DORASolvers.TabularSSPs.optimal_value(m)
+    V, pistar = optimal_value(m)
     @test 0.0 < V[m.start] < m.c_to
 end
 
@@ -98,9 +98,9 @@ end
     @test oracle_calls(p.learner) == sol.iters
 
     # the planner policy is near optimal on the tabularized model
-    V, _ = DORASolvers.TabularSSPs.optimal_value(p.tab)
+    V, _ = optimal_value(p.tab)
     Jstar = V[p.tab.start]
-    Jp = DORASolvers.TabularSSPs.eval_policy(p.tab, p.pi)[p.tab.start]
+    Jp = eval_policy(p.tab, p.pi)[p.tab.start]
     @test (Jp - Jstar) / Jstar < 0.01
 
     # value follows the POMDPs.jl maximization convention
@@ -114,14 +114,73 @@ end
     @test r isa Float64
 end
 
+# Regression: the evaluation helpers are exported by DORASolvers, and used to
+# be shadowed by same-named but disconnected functions inside TabularSSPs, so
+# `using DORASolvers; optimal_value(planner.tab)` raised a MethodError. They
+# must be one generic per name, carrying methods for both model types.
+# Placed after the testset above, which asserts on the once-per-session
+# `maxlog = 1` discount warning and therefore has to see the first `solve`.
+@testset "exported evaluation API accepts a TabularSSP" begin
+    classify = sp -> begin
+        r = get(rewards, sp, 0.0)
+        r > 0.0 ? :goal : r < 0.0 ? :crash : :normal
+    end
+    tab = tabularize(mdp; start=GWPos(1, 1), classify=classify,
+                     cost=(s, a, sp) -> 1.0, c_min=0.5, c_to=30.0,
+                     c_crash=20.0, horizon=100, cost_noise=0.0)
+
+    # one function object per name, shared by the warehouse and tabular models
+    for f in (eval_policy, optimal_value, outcome_rates, causality_margin,
+              reduced_costs)
+        nm = nameof(f)
+        @test f === getfield(DORASolvers.NavSSPs, nm)
+        @test f === getfield(DORASolvers.TabularSSPs, nm)
+    end
+    @test hasmethod(optimal_value, Tuple{TabularSSP})
+    @test hasmethod(eval_policy, Tuple{TabularSSP,Vector{Int}})
+    @test hasmethod(outcome_rates, Tuple{TabularSSP,Vector{Int}})
+    @test hasmethod(causality_margin,
+                    Tuple{TabularSSP,Vector{Float64},Vector{Int}})
+    @test hasmethod(reduced_costs, Tuple{TabularSSP,Vector{Float64}})
+    # the TabularSSP methods really are the ones defined in TabularSSPs
+    @test which(optimal_value, Tuple{TabularSSP}).module === DORASolvers.TabularSSPs
+
+    # backward compatibility: the module-qualified path that external scripts
+    # used before the fix still resolves and still returns the same result,
+    # even though the methods now live on the NavSSPs generics
+    @test DORASolvers.TabularSSPs.optimal_value(tab) == optimal_value(tab)
+    @test DORASolvers.NavSSPs.optimal_value(tab) == optimal_value(tab)
+
+    # and they run, called through the package-level names only
+    V, pistar = optimal_value(tab)
+    @test 0.0 < V[tab.start] < tab.c_to
+    @test eval_policy(tab, pistar)[tab.start] ≈ V[tab.start] atol = 1e-6
+    sr, cr, tr = outcome_rates(tab, pistar)
+    @test sr + cr + tr ≈ 1.0 atol = 1e-9
+    marg, causf = causality_margin(tab, V, pistar)
+    @test isfinite(marg) && 0.0 <= causf <= 1.0
+    @test count(isfinite, reduced_costs(tab, V)) > 0
+
+    # the documented path: analyse the model behind a planner
+    planner = solve(DORASolver(start=GWPos(1, 1)), mdp)
+    action(planner, GWPos(1, 1))
+    Vp, _ = optimal_value(planner.tab)
+    Jstar = Vp[planner.tab.start]
+    Jp = eval_policy(planner.tab, planner.pi)[planner.tab.start]
+    # the DORA policy can only be at least as costly as the exact optimum,
+    # and the documented bound on that excess is 1% (see docs/src/examples.md)
+    @test Jp >= Jstar - 1e-9
+    @test (Jp - Jstar) / Jstar < 0.01
+end
+
 @testset "DORASolver online training" begin
     sol = DORASolver(start=GWPos(1, 1), known_costs=false, train_episodes=300,
                      seed=1)
     p = solve(sol, mdp)
     @test oracle_calls(p.learner) == sol.train_episodes * sol.iters
-    V, _ = DORASolvers.TabularSSPs.optimal_value(p.tab)
+    V, _ = optimal_value(p.tab)
     Jstar = V[p.tab.start]
-    Jp = DORASolvers.TabularSSPs.eval_policy(p.tab, replan!(p))[p.tab.start]
+    Jp = eval_policy(p.tab, replan!(p))[p.tab.start]
     @test (Jp - Jstar) / Jstar < 0.05
 
     # train! continues learning on the same planner
@@ -194,6 +253,59 @@ end
     @test all(m0.haz .== 0.0)
 end
 
+# The shelf pattern fills rows whose zero-based index is 2 or 3 modulo 4, and
+# build places the start and the goal on row n - 12, so only n >= 12 with
+# n % 4 in (0, 1) yields free start and goal cells. Other sizes used to reach
+# the array setup with a zero index and fail with a BoundsError (n = 18), or
+# return a model whose start index was silently 0 (n = 14).
+@testset "build grid size validation" begin
+    for n in (12, 13, 16, 17, 20, 21, 24, 25)
+        m = build(; n=n, p_haz=0.0, rough=0.0)
+        # both resolved to ordinary cells, never to the 0 index that used to
+        # slip through, and never to the crash index m.NS
+        @test 1 <= m.start <= m.S
+        @test 1 <= m.goal <= m.S
+        @test m.start != m.goal
+    end
+
+    # below the minimum: row n - 12 is above the top border
+    for n in (0, 1, 8, 11)
+        @test_throws ArgumentError build(; n=n)
+    end
+
+    # start or goal would land inside a shelf row
+    for n in (14, 15, 18, 19, 22, 23)
+        @test_throws ArgumentError build(; n=n)
+    end
+
+    # boundaries of the accepted residue classes, either side of a valid size
+    @test_throws ArgumentError build(; n=11)   # just below the minimum
+    @test build(; n=12) isa NavSSP             # the minimum itself
+    @test build(; n=13) isa NavSSP             # last accepted residue
+    @test_throws ArgumentError build(; n=14)   # first rejected residue
+
+    # the messages name the offending argument, not an internal index
+    err = try
+        build(; n=18)
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin("n = 18", err.msg)
+end
+
+# Roughness needs a stream; asking for it without one used to be ignored.
+@testset "build roughness requires a terrain rng" begin
+    @test_throws ArgumentError build(; n=20, rough=0.5)
+    @test_throws ArgumentError build(; n=20, rough=0.5, terrain_rng=nothing)
+
+    # unchanged behaviour for the two supported combinations
+    flat = build(; n=20, rough=0.0)
+    rugged = build(; n=20, rough=0.5, terrain_rng=SplitMix64(7000))
+    @test rugged.terrain != flat.terrain           # the field really is added
+    @test build(; n=20, rough=0.0, terrain_rng=nothing) isa NavSSP
+end
+
 @testset "learner zoo on the warehouse" begin
     m = build(; n=20, eps=0.10, p_haz=0.14, rough=0.5,
               terrain_rng=SplitMix64(7000))
@@ -255,19 +367,19 @@ end
     m = tabularize(mdp; start=GWPos(1, 1), classify=classify,
                    cost=(s, a, sp) -> 1.0, c_min=0.5, c_to=30.0,
                    c_crash=20.0, horizon=100, cost_noise=0.2)
-    V, pistar = DORASolvers.TabularSSPs.optimal_value(m)
-    @test DORASolvers.TabularSSPs.eval_policy(m, pistar)[m.start] ≈ V[m.start] atol = 1e-6
-    sr, cr, tr = DORASolvers.TabularSSPs.outcome_rates(m, pistar)
+    V, pistar = optimal_value(m)
+    @test eval_policy(m, pistar)[m.start] ≈ V[m.start] atol = 1e-6
+    sr, cr, tr = outcome_rates(m, pistar)
     @test sr + cr + tr ≈ 1.0 atol = 1e-9
-    marg, causf = DORASolvers.TabularSSPs.causality_margin(m, V, pistar)
+    marg, causf = causality_margin(m, V, pistar)
     @test isfinite(marg) && 0.0 <= causf <= 1.0
     # the clamped reduced-cost member of the Dijkstra class is near optimal
-    ws = DORASolvers.TabularSSPs.reduced_costs(m, V)
+    ws = reduced_costs(m, V)
     fin = isfinite.(ws)
     @test count(fin) > 0
     wr = [fin[s, a] ? max(ws[s, a], 0.0) : 1e6 for s in 1:m.NS, a in 1:m.NA]
     piR, _ = dijkstra_policy(ReverseAdj(m.succ), wr, m.goal, m.avail, m.NS, m.NA)
-    JR = DORASolvers.TabularSSPs.eval_policy(m, piR)[m.start]
+    JR = eval_policy(m, piR)[m.start]
     @test (JR - V[m.start]) / V[m.start] < 0.01
 
     # a two-step horizon forces the timeout return of the tabular episode

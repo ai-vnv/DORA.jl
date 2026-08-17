@@ -7,6 +7,19 @@ module RNGs
 
 export SplitMix64, nextu64, rand01, randint, uniform, categorical
 
+"""
+    SplitMix64(seed::Integer)
+
+Deterministic SplitMix64 stream, seeded by `seed`.
+
+It deliberately does **not** subtype `Random.AbstractRNG`. Every draw in the
+experiments goes through `rand01`, `randint`, `uniform` and `categorical` in a
+fixed order, and each of those is defined here to match the Python reference
+implementation bit for bit. Subtyping `AbstractRNG` would make the generic
+`Base`/`Random` samplers applicable, and those consume a different number of
+bits per draw, which would silently break that correspondence. Use a
+`MersenneTwister` or `Xoshiro` wherever a standard Julia RNG is wanted.
+"""
 mutable struct SplitMix64
     s::UInt64
 end

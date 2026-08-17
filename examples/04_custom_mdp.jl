@@ -45,8 +45,9 @@ for s in 1:5
             "  (cost-to-goal ", round(-value(planner, s), digits=2), ")")
 end
 
-# The tabularized SSP is available for exact analysis.
-V, pistar = DORASolvers.TabularSSPs.optimal_value(planner.tab)
-sr, cr, _ = DORASolvers.TabularSSPs.outcome_rates(planner.tab, pistar)
+# The tabularized SSP is available for exact analysis through the same
+# exported helpers that the warehouse domain uses.
+V, pistar = optimal_value(planner.tab)
+sr, cr, _ = outcome_rates(planner.tab, pistar)
 println("optimal expected cost: ", round(V[planner.tab.start], digits=2),
         "  success rate: ", round(sr, digits=3))

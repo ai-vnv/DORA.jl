@@ -17,9 +17,10 @@ stochastic shortest path problem with [`tabularize`](@ref):
 By default the SSP structure is derived from the model:
 
 - **start**: sampled from `initialstate(mdp)`
-- **classify**: terminal or positive-reward states become `:goal`,
-  negative-reward states become `:crash` (reward sign taken as
-  `maximum(reward(mdp, sp, a))` over actions)
+- **classify**: a terminal state becomes `:crash` if its reward is negative and
+  `:goal` otherwise; a non-terminal state becomes `:goal` for positive reward,
+  `:crash` for negative reward, and `:normal` for zero (the sign is taken from
+  the largest expected immediate reward over actions)
 - **cost**: `max(c_min, step_cost - reward(mdp, s, a))`, so unit steps cost
   `step_cost` and penalized steps cost more
 
@@ -71,7 +72,7 @@ a = action(planner, s)        # replans first
 | `iters` | `3` | Dijkstra oracle calls per (re)planning round |
 | `alpha` | `0.4` | damping of the cost-to-goal update |
 | `beta` | `0.05` | confidence radius scale for optimistic cost estimates |
-| `optimistic` | `true` | subtract the confidence radius from cost estimates |
+| `optimistic` | `true` | subtract the confidence radius from cost estimates — **only takes effect when `known_costs = false`** (see below) |
 | `correct` | `true` | apply the reduced-cost drift correction (disable to get plain determinize-and-replan) |
 | `explore_eps` | `0.0` | epsilon-greedy exploration during training episodes |
 | `known_costs` | `true` | seed cost statistics from the model |
@@ -88,6 +89,15 @@ a = action(planner, s)        # replans first
 | `c_to` | `2 * horizon * step_cost` | timeout penalty |
 | `c_crash` | `horizon * step_cost` | crash penalty |
 | `cost_noise` | `0.0` | observation noise during training episodes |
+| `name` | `"tabular"` | label stored on the resulting `TabularSSP`, for reports and plots |
+
+!!! warning "`optimistic` and `known_costs` interact"
+    The learner is constructed with `optimistic && !known_costs`. The
+    optimistic confidence radius is an exploration bonus for costs that still
+    have to be discovered, so under the default `known_costs = true` the costs
+    are already exact and the radius is suppressed — setting
+    `optimistic = true` there changes nothing. Optimistic exploration requires
+    `known_costs = false`.
 
 ## Value convention
 
@@ -115,4 +125,32 @@ The baseline learners from the paper (`DORA0`, `CED`, `EGD`, `OptimisticVI`,
 `Sarsa`, `MCTSPlan`) and the chance-constrained `RiskDORA` (with
 `update_multiplier!`) share the same API. The package also ships the
 warehouse navigation benchmark domain ([`build`](@ref)), which implements
-the POMDPs.jl MDP interface.
+the POMDPs.jl MDP interface. Its shelf layout fixes where the start and the
+goal can sit, so `build` accepts `n >= 12` with `n % 4` equal to `0` or `1`
+(for example `16`, `20`, `24`) and throws an `ArgumentError` otherwise.
+
+## Exact evaluation
+
+The evaluation helpers are exported and work on both model types — the
+tabularized MDP behind a planner and the warehouse domain — so no qualified
+module paths are needed:
+
+```julia
+using DORASolvers
+
+planner = solve(DORASolver(start=s0), mdp)
+tab = planner.tab                         # the TabularSSP that was planned on
+
+V, pistar = optimal_value(tab)            # exact optimum by value iteration
+J = eval_policy(tab, planner.pi)[tab.start]
+gap = (J - V[tab.start]) / V[tab.start]   # suboptimality of the DORA policy
+
+sr, cr, tr = outcome_rates(tab, pistar)   # success / crash / timeout rates
+w = reduced_costs(tab, V)                 # the weights the oracle would need
+worst, frac = causality_margin(tab, V, pistar)
+```
+
+`optimal_value`, `eval_policy` and `outcome_rates` are exact
+(horizon-truncated) dynamic programming over the whole state space, not
+estimates from simulation. They are analysis tools: DORA itself never runs
+them.
