@@ -32,9 +32,11 @@ Learner hyperparameters (defaults are the paper values):
 Tabularization controls (`nothing` means "derive a default from the MDP"):
 
 - `start`: initial state; default samples `initialstate(mdp)`
-- `classify`: function `sp -> :goal | :crash | :normal`; the default sends
-  terminal or positive-reward states to `:goal` and negative-reward states to
-  `:crash` (reward sign taken as `maximum(reward(mdp, sp, a))` over actions)
+- `classify`: function `sp -> :goal | :crash | :normal`. The default classifies
+  a *terminal* state as `:crash` when its reward is negative and `:goal`
+  otherwise, and a *non-terminal* state as `:goal` for positive reward,
+  `:crash` for negative reward, and `:normal` for zero. The sign is taken from
+  the largest expected immediate reward over actions.
 - `cost`: function `(s, a, sp) -> Float64`; default `max(c_min,
   step_cost - reward(mdp, s, a))`
 - `key = identity`: hashable identifier of a state (needed when the state type
@@ -42,9 +44,19 @@ Tabularization controls (`nothing` means "derive a default from the MDP"):
 - `step_cost = 1.0`, `c_min = 0.25`, `horizon = 200`, `cost_noise = 0.0`
 - `c_to` (default `2 * horizon * step_cost`): timeout penalty
 - `c_crash` (default `horizon * step_cost`): crash penalty
+- `name = "tabular"`: label stored on the resulting `TabularSSP`, used only to
+  identify the model in reports and plots
 
 DORA treats the model as an undiscounted stochastic shortest path problem; a
 warning is issued when `discount(mdp) < 1`.
+
+!!! note "`optimistic` only takes effect when the costs are unknown"
+    The learner is constructed with `optimistic && !known_costs`. The
+    optimistic confidence radius is an exploration bonus for costs that still
+    have to be discovered, so under the default `known_costs = true` the costs
+    are already exact and the radius is suppressed — setting
+    `optimistic = true` there changes nothing. Optimistic exploration requires
+    `known_costs = false`.
 """
 Base.@kwdef mutable struct DORASolver <: Solver
     iters::Int = 3

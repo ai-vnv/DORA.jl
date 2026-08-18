@@ -1,0 +1,10 @@
+# Pin the branch Codecov treats as the default for this repository.
+#
+# After the rename (DORA.jl -> DORASolvers.jl) the branch-less badge URL
+# reported "unknown" for a period, even though every CI run uploads a report
+# for main; Codecov's own default-branch metadata has since caught up on the
+# server side. Declaring the branch here makes the setting independent of that
+# server-side state, so a future rename cannot silently blank the badge again.
+# The README uses the branch-qualified badge URL for the same reason.
+codecov:
+  branch: main

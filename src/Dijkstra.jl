@@ -6,7 +6,14 @@ cost-to-goal and the parent pointer is the greedy action. Ties are broken by
 the smaller action index, which makes the returned tree deterministic.
 
 The counter `OPS` records edge scans. It is the implementation independent
-measure of planner work reported in the paper.
+measure of planner work reported in the paper. It is a single process-global
+counter, read through `edge_scans()` and cleared with `reset_ops!()`, and the
+learners account for their own work by differencing it around a call. That
+makes it correct for the single threaded experiment protocol used here, but it
+is not thread safe: planning concurrently from several tasks would interleave
+the increments and mix up the per-learner totals. Deliberately left as is, so
+that the reported work counts stay comparable with the reference
+implementation and no synchronisation cost enters the search loop.
 """
 module Dijkstra
 

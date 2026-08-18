@@ -20,11 +20,52 @@ using ..RNGs
 export NavSSP, build, eval_policy, optimal_value, outcome_rates,
        causality_margin, reduced_costs, MAXOUT, NACT
 
+"""
+    NACT
+
+Number of actions of the warehouse domain: the four commanded moves N, E, S, W.
+Exported because the arrays of a [`NavSSP`](@ref) are indexed with it; it is a
+constant of this domain, not of the package (a [`TabularSSP`](@ref DORASolvers.TabularSSPs.TabularSSP) carries its
+own `NA` field instead).
+"""
 const NACT = 4
+
+"""
+    MAXOUT
+
+Number of stochastic outcome slots per state-action pair of the warehouse
+domain: intended move, two lateral slips, and the crash sink. Exported for the
+same reason as [`NACT`](@ref); a [`TabularSSP`](@ref DORASolvers.TabularSSPs.TabularSSP) carries its own `MAXOUT`
+field, whose value depends on the model being tabularized.
+"""
 const MAXOUT = 4
+
 const DR = (-1, 0, 1, 0)     # N, E, S, W
 const DC = (0, 1, 0, -1)
 const FREE, SHELF = 0, 1
+
+# Validate the grid size against the fixed shelf layout. Internal: the
+# user-facing contract lives in the `build` docstring.
+#
+# `build` places the start and the goal on the zero-based row `n - 12`, at
+# columns `1` and `n - 2`. `warehouse_map` fills a row with shelves when its
+# zero-based index is 2 or 3 modulo 4, and `n - 12 ≡ n (mod 4)`, so that row is
+# a free aisle exactly when `n % 4` is 0 or 1. Any other size puts the start or
+# the goal inside a shelf, which has no state index. That used to surface much
+# later: as a BoundsError when the goal was blocked, and — when a cross aisle
+# happened to spare the goal, as at n = 14 and n = 26 — as a silently corrupt
+# model with `start == 0`. Sizes below 12 place the row above the top border.
+function _check_grid_size(n::Int)
+    n >= 12 || throw(ArgumentError(
+        "NavSSP grid size n = $n is too small: the start and goal row is " *
+        "n - 12 (zero based), so n must be at least 12."))
+    r = n % 4
+    (r == 0 || r == 1) || throw(ArgumentError(
+        "NavSSP grid size n = $n places the start or the goal inside a " *
+        "shelf row. The fixed warehouse layout requires n % 4 ∈ (0, 1), " *
+        "for example 12, 13, 16, 17, 20, 21, 24, 25; got n % 4 = $r."))
+    return nothing
+end
 
 # ---------------- map construction ----------------
 
@@ -98,6 +139,24 @@ end
 
 # ---------------- the MDP ----------------
 
+"""
+    NavSSP
+
+The warehouse navigation benchmark, exposed through the POMDPs.jl `MDP`
+interface and constructed with [`build`](@ref). States are integer indices
+`1:NS` where `NS = S + 1`, the ordinary cells are `1:S`, and index `NS` is the
+absorbing crash state; `cells[s]` gives the zero-based `(row, col)` of cell `s`
+and `sidx` is the inverse map.
+
+The map geometry (`grid`, `succ`, `out_s`, `out_p`) is known to the planner,
+while the traversal costs (`terrain`) and the contact risk (`haz`) are what a
+learner has to discover online. `cbar[s, a]` is the expected step cost and
+`pcrash[s, a]` the contact probability, both used only for exact evaluation.
+
+The exported helpers `optimal_value`, `eval_policy`, `outcome_rates`,
+`causality_margin` and `reduced_costs` accept a `NavSSP`, exactly as they
+accept a [`TabularSSP`](@ref DORASolvers.TabularSSPs.TabularSSP).
+"""
 struct NavSSP <: MDP{Int,Int}
     n::Int
     eps::Float64
@@ -127,16 +186,34 @@ struct NavSSP <: MDP{Int,Int}
 end
 
 """
-    build(; n, eps, ...)
+    build(; n=20, eps=0.10, c_bump=1.5, c_crash=80.0, c_to=60.0, horizon=150,
+          c_min=0.25, p_haz=0.14, cost_noise=0.12, rough=0.0,
+          terrain_rng=nothing) -> NavSSP
 
-Construct the navigation SSP. `terrain_rng` should be a `SplitMix64` so that
-the generated terrain matches the Python reference implementation.
+Construct the warehouse navigation SSP used as the paper's primary benchmark.
+The defaults are the paper values.
+
+`n` is the side length of the square grid. The shelf layout is fixed, and it
+admits a start and a goal only for `n >= 12` with `n % 4 ∈ (0, 1)` — for
+example `12`, `13`, `16`, `17`, `20`, `21`, `24`. Any other size throws an
+`ArgumentError`.
+
+`rough` adds a smoothed random field to the terrain costs. Generating it needs
+a stream, so passing `rough > 0` without a `terrain_rng` throws an
+`ArgumentError` rather than silently producing flat terrain. `terrain_rng`
+should be a [`SplitMix64`](@ref) so that the generated terrain matches the
+Python reference implementation bit for bit.
 """
 function build(; n::Int=20, eps::Float64=0.10, c_bump::Float64=1.5,
                c_crash::Float64=80.0, c_to::Float64=60.0, horizon::Int=150,
                c_min::Float64=0.25, p_haz::Float64=0.14,
                cost_noise::Float64=0.12, rough::Float64=0.0,
                terrain_rng=nothing)
+    _check_grid_size(n)
+    (rough > 0.0 && terrain_rng === nothing) && throw(ArgumentError(
+        "build received rough = $rough but no terrain_rng. Terrain roughness " *
+        "needs a random stream; pass terrain_rng = SplitMix64(seed), or set " *
+        "rough = 0.0 for flat terrain."))
     grid = warehouse_map(n)
     terrain = terrain_cost(grid, c_min, terrain_rng, rough)
     haz = hazard_map(grid, p_haz)

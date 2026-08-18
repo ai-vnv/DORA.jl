@@ -18,8 +18,54 @@ module TabularSSPs
 using POMDPs
 using POMDPTools: weighted_iterator
 
+# The exact evaluation routines below are additional methods of the generic
+# functions introduced for the warehouse domain, not new functions. Extending
+# them here is what makes `optimal_value(tab)`, `eval_policy(tab, pi)` and the
+# rest work through the package level exports of DORASolvers.
+import ..NavSSPs: eval_policy, optimal_value, outcome_rates, causality_margin,
+                  reduced_costs
+
 export TabularSSP, tabularize
 
+"""
+    TabularSSP
+
+Array based stochastic shortest path problem distilled from a POMDPs.jl model
+by [`tabularize`](@ref). It is the representation the Dijkstra oracle and every
+learner in the package actually operate on, and it is what
+`solve(::DORASolver, ::MDP)` stores in `planner.tab`.
+
+Relation to the original model. Ordinary states keep their identity and occupy
+indices `1:S`, with `states[i]` giving the original model state of index `i`.
+Every state classified as a goal is collapsed into the single absorbing index
+`goal = S + 1`, and every state classified as a failure into `crash = S + 2`,
+so `NS = S + 2`. Rewards have already been converted into positive traversal
+costs, and the problem is undiscounted.
+
+Fields that matter when reading or extending the code:
+
+- `succ[s, a]`: the *determinized* successor, that is the most likely outcome
+  that is neither a self loop nor the crash sink, or `0` when there is none.
+  These edges are the graph the Dijkstra oracle searches.
+- `avail[s, a]`: whether `(s, a)` has a determinized successor at all.
+- `out_s[s, a, k]`, `out_p[s, a, k]`: the `k`-th stochastic outcome and its
+  probability; `k` runs to `MAXOUT` and unused slots hold probability zero.
+- `cout[s, a, k]`: traversal cost of that outcome; `cbar[s, a]` is its
+  expectation over `k`.
+- `c_min`, `c_to`, `c_crash`: cost floor, timeout penalty and crash penalty.
+- `c_bump`, `out_bump`: held at zero; present so that a `TabularSSP` and a
+  `NavSSP` expose the same fields to the learners.
+
+The exported evaluation helpers `optimal_value`, `eval_policy`,
+`outcome_rates`, `causality_margin` and `reduced_costs` accept a `TabularSSP`
+directly, and are the intended way to analyse a tabularized model exactly:
+
+```julia
+tab = planner.tab
+V, pistar = optimal_value(tab)
+gap = (eval_policy(tab, planner.pi)[tab.start] - V[tab.start]) / V[tab.start]
+```
+"""
 struct TabularSSP
     NS::Int                      # number of states including goal and crash
     NA::Int
@@ -141,8 +187,15 @@ function tabularize(mdp; start, classify, cost, c_min::Float64,
 end
 
 # ---------------- exact evaluation ----------------
-# These mirror the routines in NavSSP.jl with the sizes taken from the model.
+# Additional methods of the NavSSPs generics, with the sizes taken from the
+# model instead of the warehouse constants. The recursions are identical.
 
+"""
+    eval_policy(m::TabularSSP, pi::Vector{Int}) -> Vector{Float64}
+
+Expected horizon truncated cost of the stationary policy `pi` from every state
+index. The crash sink carries `m.c_crash` and the goal sink carries zero.
+"""
 function eval_policy(m::TabularSSP, pi::Vector{Int})
     V = fill(m.c_to, m.NS)
     V[m.goal] = 0.0
@@ -165,6 +218,13 @@ function eval_policy(m::TabularSSP, pi::Vector{Int})
     return V
 end
 
+"""
+    optimal_value(m::TabularSSP) -> (V, pi)
+
+Horizon truncated optimal cost-to-goal `V` and its greedy stationary policy
+`pi`, computed exactly by value iteration on the tabularized model. This is the
+reference a DORA policy is compared against.
+"""
 function optimal_value(m::TabularSSP)
     V = fill(m.c_to, m.NS)
     V[m.goal] = 0.0
@@ -207,6 +267,12 @@ function optimal_value(m::TabularSSP)
     return V, pi
 end
 
+"""
+    outcome_rates(m::TabularSSP, pi::Vector{Int}) -> (success, crash, timeout)
+
+Exact probabilities, from `m.start`, that `pi` reaches the goal sink, reaches
+the crash sink, or exhausts the horizon. The three values sum to one.
+"""
 function outcome_rates(m::TabularSSP, pi::Vector{Int})
     f = zeros(m.NS)
     g = zeros(m.NS)
@@ -236,11 +302,21 @@ function outcome_rates(m::TabularSSP, pi::Vector{Int})
     return sr, cr, max(0.0, 1.0 - sr - cr)
 end
 
+"""
+    causality_margin(m::TabularSSP, V, pi) -> (worst, fraction)
+
+Smallest decrease of `V` along a positive probability transition of `pi`, and
+the fraction of ordinary states at which every such transition decreases `V`.
+A nonnegative margin is the classical condition under which one pass label
+setting is exact; DORA does not need it, which is the point of the reduced
+cost weights.
+"""
 function causality_margin(m::TabularSSP, V::Vector{Float64}, pi::Vector{Int})
     worst = Inf
     okc, tot = 0, 0
+    # The goal and crash sinks are indices S + 1 and S + 2, so iterating over
+    # the ordinary states 1:S already excludes them.
     for s in 1:m.S
-        s == m.goal && continue
         a = pi[s]
         good = true
         for k in 1:m.MAXOUT
@@ -258,6 +334,14 @@ function causality_margin(m::TabularSSP, V::Vector{Float64}, pi::Vector{Int})
     return worst, okc / max(tot, 1)
 end
 
+"""
+    reduced_costs(m::TabularSSP, V) -> Matrix{Float64}
+
+Reduced costs `w(s, a) = Q(s, a) - V(sigma(s, a))` on the determinized graph,
+where `sigma(s, a) = m.succ[s, a]` is the intended successor. Entries without a
+determinized successor are `Inf`. Nonnegativity of these weights is the
+condition under which the Dijkstra oracle is exact.
+"""
 function reduced_costs(m::TabularSSP, V::Vector{Float64})
     w = fill(Inf, m.NS, m.NA)
     @inbounds for s in 1:m.NS, a in 1:m.NA

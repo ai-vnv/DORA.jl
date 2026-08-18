@@ -34,9 +34,11 @@ println("value  at $s:  ", value(planner, s))
 r = simulate(RolloutSimulator(rng=MersenneTwister(1), max_steps=100), mdp, planner)
 println("rollout reward: ", r)
 
-# The planner's policy is near optimal on the tabularized model.
-V, _ = DORASolvers.TabularSSPs.optimal_value(planner.tab)
+# The planner's policy is near optimal on the tabularized model. The exact
+# evaluation helpers are exported, and accept the TabularSSP behind the
+# planner directly.
+V, _ = optimal_value(planner.tab)
 Jstar = V[planner.tab.start]
-J = DORASolvers.TabularSSPs.eval_policy(planner.tab, planner.pi)[planner.tab.start]
+J = eval_policy(planner.tab, planner.pi)[planner.tab.start]
 println("optimal cost $Jstar, planner cost $J  (gap ",
         round(100 * (J - Jstar) / Jstar, digits=3), "%)")

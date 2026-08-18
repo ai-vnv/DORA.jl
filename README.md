@@ -1,7 +1,7 @@
 # DORASolvers.jl
 
 [![CI](https://github.com/ai-vnv/DORASolvers.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ai-vnv/DORASolvers.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/ai-vnv/DORASolvers.jl/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORASolvers.jl)
+[![codecov](https://codecov.io/gh/ai-vnv/DORASolvers.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ai-vnv/DORASolvers.jl)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://ai-vnv.github.io/DORASolvers.jl/dev/)
 
 DORA (Dijkstra Oracle Reduced-cost Algorithm) is an online solver for
@@ -110,6 +110,9 @@ Beyond the solver, the package exports the building blocks used by the paper:
 
 - `tabularize`: convert any discrete POMDPs.jl MDP into a tabular SSP with
   collapsed goal and crash sinks
+- `optimal_value`, `eval_policy`, `outcome_rates`, `causality_margin`,
+  `reduced_costs`: exact evaluation of a policy or a model, accepting either a
+  tabularized MDP (`planner.tab`) or the warehouse domain
 - `DORALearner`, `plan!`, `observe!`, `run_episode!`: the episode-level
   online learning API, plus the baseline learners (`DORA0`, `CED`, `EGD`,
   `OptimisticVI`, `Sarsa`, `MCTSPlan`) and the chance-constrained
